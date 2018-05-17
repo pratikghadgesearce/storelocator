@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Store Locator </title>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 20px;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+      <div>
+          <label for="raddressInput">Select Radius :</label>
+          <select id="radiusSelect" label="Radius">
+            <option value="10" selected>10 kms</option>
+            <option value="5">5 kms</option>
+            <option value="3">3 kms</option>
+            <option value="1">1 km</option>
+          </select> 
+         <input type="button" id="searchButton" value="Search"/>
+     </div>
+     <div>
+        <label for="storeInput">Select Store :</label>
+        <select id="storeSelect" label="Store">
+          
+        </select>
+       <input type="button" id="searchStoreButton" value="Locate Store"/>
+   </div>
+
+   <div id="top_content">
+      My Location :<input id="mylocation" type="text" />
+       <input type="button" value="Get Nearby Stores" onClick="showNearbyLocations();">
+       
+</div>
+ <div id="map">
+   
+ </div>
+ 
+    
+<script>
+
+  var map,storesJSON,request,geocoder,radius_circle,places;
+  var locationSelect;
+  var infoWindow,infowindow2,infoWindownRadius;
+  var directionsDisplayCollection = [],infowindowsCollection = [];
+  var directionsDisplay, directionsService;
+  var markers = [];
+  var select;
+  var autocomplete;
+  var countryRestrict = {'country': 'in'};
+  var MARKER_PATH = 'https://developers.google.com/maps/documentation/javascript/images/marker_green';
+  var hostnameRegexp = new RegExp('^https?://.+?/');
+  var totalDistance = 0, currentLocation, nextLocation ;
+
+  //[88.4350877, 22.5743296] 222222
+  //[88.4351014, 22.5742933] 111111
+  
+
+  function initMap() 
+  {
+    geocoder = new google.maps.Geocoder();
+
+   storesJSON = [
+            {
+            "id" : "1",
+            "name" : "#5 Bldg B2 Blue Ridge Township",
+            "address" : "Rajiv Gandhi Infotech Park,Pune, MA 411057, IND",
+            "contact" : "020 6521 5656",
+            "latitude" : 18.579449, 
+            "longitude" : 73.736208
+          },{
+            "id" : "2",
+            "name" : "IT 2 Qubix Business Park2",
+            "address" : "Blue Ridge, Hinjewadi Phase 1,Kiosk 2, Ground Floor,Pune, MA 411057, IND",
+            "contact" : "020 6521 7676",
+            "latitude" : 18.578891,
+            "longitude" :  73.737160
+          },{
+            "id" : "3",
+            "name" : "Survey No17, Hinjawadi Phase 1",
+            "address" : "Shop 11, Ground Floor Xion Mall ,Pune, MA 411057, IND",
+            "contact" : "020 6522 3314",
+            "latitude" : 18.584920,
+            "longitude" :  73.737778
+          },{
+            "id" : "4",
+            "name" : "Plot 31 Phase II Wipro Limited",
+            "address" : "Hinjewadi,Rajiv Ghandi InfoTech Park Pune, MA 411 057, IND",
+            "contact" : "9158880074",
+            "latitude" : 18.599404, 
+            "longitude" : 73.717808
+          },{
+            "id" : "5",
+            "name" : "Plot #24, Taluka Mulshi",
+            "address" : "Hinjewadi,Rajiv Ghandi InfoTech Park Pune, MA 411 057, IND",
+            "contact" : "020 6521 5656",
+            "latitude" : 18.591012,
+            "longitude" : 73.733781
+          },{
+            "id" : "6",
+            "name" : "Unit 17, Balewadi High Street",
+            "address" : "Baner-Balewadi Rd,Nr.Cummins Office, Pune, MA 411045, IND",
+            "contact" : "020 6030 3322",
+            "latitude" : 18.570007,
+            "longitude" : 73.773539
+          },{
+            "id" : "7",
+            "name" : "Phase II, Village-Man",
+            "address" : "Rajiv Gandhi Infotech Park,Pune, MA 411057, IND",
+            "contact" : "020 6521 1212",
+            "latitude" : 18.596303, 
+            "longitude" : 73.708805
+          },{
+            "id" : "8",
+            "name" : "SEZ, Plot No.28",
+            "address" : "Rajiv Gandhi Infotech Park,Unit 5A, Quadron Business Park,Hinjewadi, Pune, MA 411057, IND",
+            "contact" : "020 6977 8888",
+            "latitude" : 18.585520, 
+            "longitude" : 73.696888
+          },{
+            "id" : "9",
+            "name" : "Plot 1, Phase 3",
+            "address" : "Rajiv Gandhi IT Park, Hinjewadi,Tech Mahindra Ltd,Pune, MA 411057, IND",
+            "contact" : "099 60 893870",
+            "latitude" : 18.586880, 
+            "longitude" : 73.686036
+          },{
+            "id" : "10",
+            "name" : "Kalewadi Phata, Wakad",
+            "address" : "Shop No. 27, Ground Floor,Pride Purple Commercial Comp.,Pune, MA 411057, IND",
+            "contact" : "020 6521 5656",
+            "latitude" : 18.602896, 
+            "longitude" : 73.776914
+          },
+    ]
+
+    map = new google.maps.Map(document.getElementById("map"), {
+    center: new google.maps.LatLng(18.592817, 73.756933),
+    /*styles: [
+          {elementType: 'geometry', stylers: [{color: '#242f3e'}]},
+          {elementType: 'labels.text.stroke', stylers: [{color: '#242f3e'}]},
+          {elementType: 'labels.text.fill', stylers: [{color: '#746855'}]},
+          {
+            featureType: 'administrative.locality',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#d59563'}]
+          },
+          {
+            featureType: 'poi',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#d59563'}]
+          },
+          {
+            featureType: 'poi.park',
+            elementType: 'geometry',
+            stylers: [{color: '#263c3f'}]
+          },
+          {
+            featureType: 'poi.park',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#6b9a76'}]
+          },
+          {
+            featureType: 'road',
+            elementType: 'geometry',
+            stylers: [{color: '#38414e'}]
+          },
+          {
+            featureType: 'road',
+            elementType: 'geometry.stroke',
+            stylers: [{color: '#212a37'}]
+          },
+          {
+            featureType: 'road',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#9ca5b3'}]
+          },
+          {
+            featureType: 'road.highway',
+            elementType: 'geometry',
+            stylers: [{color: '#746855'}]
+          },
+          {
+            featureType: 'road.highway',
+            elementType: 'geometry.stroke',
+            stylers: [{color: '#1f2835'}]
+          },
+          {
+            featureType: 'road.highway',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#f3d19c'}]
+          },
+          {
+            featureType: 'transit',
+            elementType: 'geometry',
+            stylers: [{color: '#2f3948'}]
+          },
+          {
+            featureType: 'transit.station',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#d59563'}]
+          },
+          {
+            featureType: 'water',
+            elementType: 'geometry',
+            stylers: [{color: '#17263c'}]
+          },
+          {
+            featureType: 'water',
+            elementType: 'labels.text.fill',
+            stylers: [{color: '#515c6d'}]
+          },
+          {
+            featureType: 'water',
+            elementType: 'labels.text.stroke',
+            stylers: [{color: '#17263c'}]
+          }
+        ],*/
+    zoom: 12,
+    mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+
+    //var trafficLayer = new google.maps.TrafficLayer();
+    //trafficLayer.setMap(map);
+
+    /*for (var i = 0, length = sampleJSON.length - 1; i < length; i++)
+    {
+        var str = sampleJSON[i].location.coordinates + '';
+        var myarray = str.split(',');
+        var str1 = sampleJSON[i+1].location.coordinates + '';
+        var myarray1 = str1.split(',');
+        var one = parseFloat(myarray[1]);
+        var two = parseFloat(myarray[0]);
+        var three = parseFloat(myarray1[1]);
+        var four = parseFloat(myarray1[0]);
+        var currentLocation = { lat : one , lng : two };
+        var nextLocation = { lat : three, lng : four};
+        showDirectionsAndTime(currentLocation, nextLocation);
+    }*/
+    
+       
+    for (var i = 0, length = storesJSON.length; i < length; i++) 
+    {
+        var storeData = storesJSON[i];
+        select = document.getElementById("storeSelect");
+        select.options[select.options.length] = new Option(storesJSON[i].name, storesJSON[i].id);
+    }
+
+    for (var i = 0, length = storesJSON.length - 1; i < length; i++)
+    {
+        currentLocation = { lat : storesJSON[i].latitude , lng : storesJSON[i].longitude };
+        nextLocation = { lat : storesJSON[i+1].latitude , lng : storesJSON[i+1].longitude};
+        //showDirectionsAndTime(currentLocation, nextLocation);
+    }
+
+    for (var i = 0, length = storesJSON.length; i < length; i++) 
+    {
+        var storeData = storesJSON[i];
+
+        latLng = new google.maps.LatLng(storeData.latitude, storeData.longitude); 
+      
+        // Creating a marker and putting it on the map
+        var marker = new google.maps.Marker({
+          position: latLng,
+          map: map,
+          title: storeData.name,
+          icon: 'file:///Users/pratik.ghadge/Desktop/Projects/StoreLocator//fastfood.png',
+          mapTypeControlOptions: {style: google.maps.MapTypeControlStyle.DROPDOWN_MENU}
+        });
+
+
+        infoWindow = new google.maps.InfoWindow();
+        (function(marker, storeData) {
+
+        // Attaching a click event to the current marker
+        google.maps.event.addListener(marker, "click", function(e) {
+          infoWindow.setContent('<h3>' + storeData.name + '</h3>'+ "<br/>" + storeData.address + "<br/>" + storeData.contact);
+          infoWindow.open(map, marker);
+          clearDirection();
+          dirLatLng = { lat : storeData.latitude , lng : storeData.longitude};
+          showDirections(myLatLng,dirLatLng,storeData );
+        });
+
+        markers.push(marker);
+
+        })(marker, storeData);
+
+    }  
+
+    if (navigator.geolocation) 
+    {
+        navigator.geolocation.getCurrentPosition(function (position) 
+        {
+            myLatLng = {lat: position.coords.latitude,lng: position.coords.longitude
+        };
+        markerUserLocation = new google.maps.Marker({
+        map: map,
+        animation: google.maps.Animation.BOUNCE,
+        position: myLatLng,
+        title: "Your Location",
+        icon : 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+        });
+              map.setCenter(myLatLng);
+              //map.setZoom(10);
+          }, function () {
+              map.setCenter(myLatLng);
+          });
+    } 
+
+    // Create the autocomplete object and associate it with the UI input control.
+    // Restrict the search to the default country, and to place type "cities".
+    autocomplete = new google.maps.places.Autocomplete(
+        /** @type {!HTMLInputElement} */ (
+            document.getElementById('mylocation')), {
+          //types: ['address'],
+          componentRestrictions: countryRestrict
+        });
+    places = new google.maps.places.PlacesService(map);
+
+    autocomplete.addListener('place_changed', onPlaceChanged);
+
+    
+    selectedStore = document.getElementById("searchStoreButton").onclick = selectedStore; 
+    showCloseLocations = document.getElementById("searchButton").onclick = showCloseLocations;     
+ };
+
+
+ function showDirectionsAndTime(start, end ) 
+{
+  clearDirection();
+  clearInfoWindow();
+  clearRadius();
+
+  var directionsService = new google.maps.DirectionsService();
+  var directionsDisplay = new google.maps.DirectionsRenderer();
+      
+  request = {
+      origin: start,
+      destination: end,
+      travelMode: google.maps.DirectionsTravelMode.DRIVING
+  };
+
+  directionsService.route(request, function (response, status) {
+    if (status == google.maps.DirectionsStatus.OK) 
+    {
+      var directionsDisplay = new google.maps.DirectionsRenderer(
+          {
+              suppressMarkers: true
+          }
+      );
+      directionsDisplay.setMap(map);
+      directionsDisplay.setOptions({ preserveViewport: true });
+      directionsDisplay.setDirections(response);
+      directionsDisplayCollection.push(directionsDisplay);
+      directionsDisplay.setPanel(document.getElementById('directionsList'));
+
+      // $scope.directionsPanel.showList = true;
+      infowindow2 = new google.maps.InfoWindow();
+
+      totalDistance = totalDistance + response.routes[0].legs[0].distance.value;
+
+      console.log(" Distance is :" + response.routes[0].legs[0].distance.value);
+      console.log(" TotalDistance is :" + totalDistance);
+
+      infowindow2.setContent(response.routes[0].legs[0].distance.text + "<br>" 
+      +response.routes[0].legs[0].duration.text + " ");
+      if (response.routes) {
+          if (response.routes[0].overview_path) {
+              var index = parseInt(response.routes[0].overview_path.length / 2);
+              //var infoposition = new google.maps.LatLng(response.routes[0].overview_path[index].lat(), response.routes[0].overview_path[index].lng());
+          }
+      }
+      //infowindow2.setPosition(infoposition ? infoposition : end);
+      infowindow2.open(map);
+      infowindowsCollection.push(infowindow2);
+    }
+    else
+    {
+      console.log(" Direction Not found : " ) + start + " , " + end;
+    }
+    });
+  }
+
+
+// When the user selects a city, get the place details for the city and
+// zoom the map in on the city.
+function onPlaceChanged() {
+  var place = autocomplete.getPlace();
+  if (place.geometry) {
+    map.panTo(place.geometry.location);
+    map.setZoom(15);
+    //search();
+    showNearbyLocations();
+  } else {
+    document.getElementById('mylocation').placeholder = 'Enter a location';
+  }
+}
+
+// Search for hotels in the selected city, within the viewport of the map.
+function search() 
+{
+  var search = {
+    bounds: map.getBounds(),
+    types: ['lodging']
+  };
+
+  places.nearbySearch(search, function(results, status) {
+    if (status === google.maps.places.PlacesServiceStatus.OK) {
+      clearResults();
+      clearMarkers();
+      // Create a marker for each hotel found, and
+      // assign a letter of the alphabetic to each marker icon.
+      for (var i = 0; i < results.length; i++) {
+        var markerLetter = String.fromCharCode('A'.charCodeAt(0) + (i % 26));
+        var markerIcon = MARKER_PATH + markerLetter + '.png';
+        // Use marker animation to drop the icons incrementally on the map.
+        markers[i] = new google.maps.Marker({
+          position: results[i].geometry.location,
+          animation: google.maps.Animation.DROP,
+          icon: markerIcon
+        });
+        // If the user clicks a hotel marker, show the details of that hotel
+        // in an info window.
+        markers[i].placeResult = results[i];
+        google.maps.event.addListener(markers[i], 'click', showInfoWindow);
+        setTimeout(dropMarker(i), i * 100);
+        addResult(results[i], i);
+      }
+    }
+  });
+}
+   
+function showNearbyLocations() 
+{
+  clearDirection();
+  clearAllMarker();
+  clearInfoWindow();
+  clearRadius();
+
+  var mylocation = document.getElementById("mylocation").value;
+  console.log("mylocation:"+ mylocation);
+  var givenLatLng;
+  var mygeocoder = new google.maps.Geocoder();
+
+  mygeocoder.geocode( { 'address': mylocation}, function(results, status) 
+  {
+
+        if (status == google.maps.GeocoderStatus.OK) 
+        {
+          var latitude = results[0].geometry.location.lat();
+          var longitude = results[0].geometry.location.lng();
+          //alert(latitude);
+          givenLatLng = { lat : latitude , lng : longitude};
+
+          if (mygeocoder) 
+          {
+            mygeocoder.geocode({'location': givenLatLng}, function (results, status) {
+            if (status == google.maps.GeocoderStatus.OK) 
+            {
+              if (status != google.maps.GeocoderStatus.ZERO_RESULTS) 
+              {
+                var current_lat_lng = results[0].geometry.location;
+                radius_circle = new google.maps.Circle({
+                center: current_lat_lng,
+                radius: 3 * 1000,
+                clickable: false,
+                map: map
+                });
+
+                radius_circle.setOptions({
+                            fillColor: '#ffcf70',
+                            strokeColor: '#ffac05'
+                        });
+
+                if ( radius_circle )
+                {
+                  map.fitBounds(radius_circle.getBounds());
+                } 
+
+                for (var i = 0, length = storesJSON.length; i < length; i++) 
+                {
+                  var storeData = storesJSON[i];
+                  var marker_lat_lng = new google.maps.LatLng(storesJSON[i].latitude, storesJSON[i].longitude);
+                  //distance in meters between your location and the marker
+          
+                  var distance_from_location = google.maps.geometry.spherical.computeDistanceBetween(current_lat_lng, marker_lat_lng); 
+                  if (distance_from_location <= 3 * 1000) 
+                  {
+                    console.log("storesJSON[i].name: "+ storesJSON[i].name );
+                    var new_marker = new google.maps.Marker({
+                    position: marker_lat_lng,
+                    map: map,
+                    icon: 'file:///Users/pratik.ghadge/Desktop/Projects/StoreLocator//fastfood.png',
+                    title: storesJSON[i].name
+                    });      								
+                    
+                    var storeName = storesJSON[i].name;
+
+                    infoWindow = new google.maps.InfoWindow();
+                    (function(new_marker, storeData) {
+
+                    // Attaching a click event to the current marker
+                    google.maps.event.addListener(new_marker, "click", function(e) {
+                      infoWindow.setContent('<h3>' + storeData.name + '</h3>'+ "<br/>" + storeData.address + "<br/>" + storeData.contact);
+                      infoWindow.open(map, new_marker);
+                      clearDirection();
+                      dirLatLng = { lat : storeData.latitude , lng : storeData.longitude};
+                      showDirections(myLatLng,dirLatLng,storeData );
+                    });
+
+                    markers.push(new_marker);
+
+                    })(new_marker, storeData);
+                  }
+                }
+              } 
+              else 
+              {
+                alert("No results found while geocoding!");
+              }
+            } 
+            else 
+            {
+            alert("Geocode was not successful: " + status);
+            }
+            });
+          }
+        } 
+  });
+}
+
+function loadAllLocation()
+{
+  clearDirection();
+  clearInfoWindow();
+  for (var i = 0, length = storesJSON.length; i < length; i++) 
+  {
+    createMarker(storesJSON[i]);
+  }  
+}
+
+function clearAllMarker()
+{
+  console.log("Markers Length: "+ markers.length);
+  for (var key in markers) {
+        markers[key].setMap(null);
+      };
+}  
+
+function clearDirection()
+{
+		if (directionsDisplayCollection != null) 
+    {
+            for (var i = 0; i < directionsDisplayCollection.length; i++) {
+                directionsDisplayCollection[i].setMap(null);
+                directionsDisplayCollection[i] = null;
+            }
+            directionsDisplayCollection = [];
+			
+    }
+}
+
+function clearInfoWindow()
+{
+	if(infowindowsCollection != null)
+  {
+		for(var j = 0; j < infowindowsCollection.length; j++)
+    {
+			console.log(j);
+			infowindowsCollection[j].close();
+		}
+		infowindowsCollection = [];
+	}
+}
+
+
+
+function showDirections(start, end, locationObject ) 
+{
+  clearDirection();
+  clearInfoWindow();
+  clearRadius();
+
+  var directionsService = new google.maps.DirectionsService();
+  var directionsDisplay = new google.maps.DirectionsRenderer();
+      
+  request = {
+      origin: start,
+      destination: end,
+      travelMode: google.maps.DirectionsTravelMode.DRIVING
+  };
+
+  directionsService.route(request, function (response, status) {
+    if (status == google.maps.DirectionsStatus.OK) 
+    {
+      var directionsDisplay = new google.maps.DirectionsRenderer(
+          {
+              suppressMarkers: true
+          }
+      );
+      directionsDisplay.setMap(map);
+      directionsDisplay.setOptions({ preserveViewport: true });
+      directionsDisplay.setDirections(response);
+      directionsDisplayCollection.push(directionsDisplay);
+      directionsDisplay.setPanel(document.getElementById('directionsList'));
+
+      // $scope.directionsPanel.showList = true;
+      infowindow2 = new google.maps.InfoWindow();
+
+      infowindow2.setContent(locationObject.name + "<br>" 
+      +locationObject.address + "<br>" 
+      +response.routes[0].legs[0].distance.text + "<br>" 
+      +response.routes[0].legs[0].duration.text + " ");
+      if (response.routes) {
+          if (response.routes[0].overview_path) {
+              var index = parseInt(response.routes[0].overview_path.length / 2);
+              //var infoposition = new google.maps.LatLng(response.routes[0].overview_path[index].lat(), response.routes[0].overview_path[index].lng());
+          }
+      }
+      //infowindow2.setPosition(infoposition ? infoposition : end);
+      infowindow2.open(map);
+      infowindowsCollection.push(infowindow2);
+    }
+    else
+    {
+
+      console.log(" Direction Not found : " ) + start + " , " + end;
+    }
+    });
+  }
+
+function createMarker(info)
+{      
+    var marker = new google.maps.Marker({
+      map: map,
+      position: new google.maps.LatLng(info.latitude, info.longitude),
+      //animation: google.maps.Animation.BOUNCE,
+      icon: 'file:///Users/pratik.ghadge/Desktop/Projects/StoreLocator//fastfood.png',
+      title: info.name
+    });
+    marker.content = '<div class="infoWindowContent">' + info.address + '</div>';
+    
+    google.maps.event.addListener(marker, 'click', function(){
+    
+      infoWindow.setContent('<h2>' + marker.title + '</h2>' + marker.content);
+      infoWindow.open(map, marker);
+
+    });
+    markers.push(marker);
+}
+
+
+function selectedStore()
+{
+  var selectedStoreLocation = document.getElementById("storeSelect");
+  var selectedLocation = selectedStoreLocation.options[selectedStoreLocation.selectedIndex].value;
+  console.log("selectedLocation: "+ selectedLocation );
+  var value = selectedLocation - 1;
+  clearDirection();
+  clearAllMarker();
+  clearInfoWindow();
+  clearRadius();
+  createMarker(storesJSON[value]);
+  dirLatLng = { lat : storesJSON[value].latitude , lng : storesJSON[value].longitude};
+  showDirections(myLatLng,dirLatLng,storesJSON[value] );
+}
+
+
+function geocodeLatLng(geocoder, map, infowindow) 
+{
+
+      var input = document.getElementById('latlng').value;
+      var latlngStr = input.split(',', 2);
+      var latlng = {lat: parseFloat(latlngStr[0]), lng: parseFloat(latlngStr[1])};
+      geocoder.geocode({'location': latlng}, function(results, status) {
+        if (status === 'OK') {
+          if (results[0]) {
+            map.setZoom(11);
+            var marker = new google.maps.Marker({
+              position: latlng,
+              map: map
+            });
+            infowindow.setContent(results[0].formatted_address);
+            infowindow.open(map, marker);
+          } else {
+            window.alert('No results found');
+          }
+        } else {
+          window.alert('Geocoder failed due to: ' + status);
+        }
+      });
+}
+
+function clearRadius()
+{
+  if (radius_circle) 
+  {
+    radius_circle.setMap(null);
+    radius_circle = null;
+  }
+} 
+
+
+function showCloseLocations() 
+{
+  clearDirection();
+  clearAllMarker();
+  clearInfoWindow();
+  clearRadius();
+  
+  var radius = document.getElementById("radiusSelect");
+  var selectedRadius = radius.options[radius.selectedIndex].value;
+  
+  if (geocoder) 
+  {
+    geocoder.geocode({'location': myLatLng}, function (results, status) {
+      if (status == google.maps.GeocoderStatus.OK) 
+      {
+        if (status != google.maps.GeocoderStatus.ZERO_RESULTS) 
+        {
+          var distance_from_location;
+          var current_lat_lng = results[0].geometry.location;
+          radius_circle = new google.maps.Circle({
+          center: current_lat_lng,
+          radius: selectedRadius * 1000,
+          clickable: false,
+          map: map
+          });
+
+          radius_circle.setOptions({
+                          fillColor: '#ffcf70',
+                          strokeColor: '#ffac05'
+                      });
+
+
+          if ( radius_circle )
+          {
+            map.fitBounds(radius_circle.getBounds());
+          } 
+    
+          for (var i = 0, length = storesJSON.length; i < length; i++) 
+          {
+            var storeData = storesJSON[i];
+            var marker_lat_lng = new google.maps.LatLng(storesJSON[i].latitude, storesJSON[i].longitude);
+            //distance in meters between your location and the marker
+            distance_from_location = google.maps.geometry.spherical.computeDistanceBetween(current_lat_lng, marker_lat_lng); 
+            
+            if (distance_from_location <= selectedRadius * 1000) 
+            {
+              console.log("distance_from_location: "+ distance_from_location );
+              var new_marker = new google.maps.Marker({
+              position: marker_lat_lng,
+              map: map,
+              icon: 'file:///Users/pratik.ghadge/Desktop/Projects/StoreLocator//fastfood.png',
+              title: storesJSON[i].name
+              });      								
+              var storeName = storesJSON[i].name;
+              
+              infoWindow = new google.maps.InfoWindow();
+              (function(new_marker, storeData,distance_from_location) {
+
+              // Attaching a click event to the current marker
+              google.maps.event.addListener(new_marker, "click", function(e) {
+                infoWindow.setContent('<h3>' + storeData.name + '</h3>'+ 
+                "<br/>" + "Distance :" + (distance_from_location/1000).toFixed(4) + " Kms " + 
+                "<br/>" + storeData.address + "<br/>" 
+                + storeData.contact);
+                infoWindow.open(map, new_marker);
+                clearDirection();
+                dirLatLng = { lat : storeData.latitude , lng : storeData.longitude};
+                showDirections(myLatLng,dirLatLng,storeData );
+              });
+
+              markers.push(new_marker);
+
+              })(new_marker, storeData,distance_from_location);
+              //markers.push(new_marker);
+
+            }
+          }
+        } 
+        else 
+        {
+          alert("No results found while geocoding!");
+        }
+    } 
+    else 
+    {
+      alert("Geocode was not successful: " + status);
+    }
+    });
+  }
+
+  // Premium Plan API Key : AIzaSyDXfJ1C88D-aNh7FbrQd5eJpPLMad6teIg
+  // Standard Plan API Key : AIzaSyCGzkbwp49nEEB7V2VW-Sb9pjpJYp2YGpw
+}
+    
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGzkbwp49nEEB7V2VW-Sb9pjpJYp2YGpw&callback=initMap&libraries=geometry,places">
+    </script>
+
+  </body>
+</html>
